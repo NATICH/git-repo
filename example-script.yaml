@@ -1,6 +1,6 @@
 # You may override default target user with -e user=someotheruser
 # It is mandatory to choose a strong password! At least consult with https://www.bennish.net/password-strength-checker/
-
+#########################################################################################
 - name: change linux user password
   hosts: [all]
   gather_facts: no
