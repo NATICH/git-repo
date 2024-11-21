@@ -19,7 +19,7 @@
 ## temp hack with direct hash input
 #    - name: newhash
 #      prompt: "new hash (get it from the shadow file of some reference server)"
-
+####
   vars:
     user: "{{ local_user.stdout }}"
 
