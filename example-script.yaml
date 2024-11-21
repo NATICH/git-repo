@@ -1,0 +1,58 @@
+# You may override default target user with -e user=someotheruser
+# It is mandatory to choose a strong password! At least consult with https://www.bennish.net/password-strength-checker/
+
+- name: change linux user password
+  hosts: [all]
+  gather_facts: no
+  vars_prompt:
+    - name: user
+      prompt: "Enter the username for password change"
+      private: no
+## use this when 656K rounds will be OK for your servers' CPU performance, or when rounds number will become configurable in ansible
+# You may need 'apt-get install python-passlib' or 'pip install passlib' for vars_prompt encryption
+    - name: newhash
+      prompt: "new password"
+      private: yes
+      encrypt: "sha512_crypt" # 656000 rounds hardcoded in ansible :(
+      confirm: yes
+      salt_size: 8
+## temp hack with direct hash input
+#    - name: newhash
+#      prompt: "new hash (get it from the shadow file of some reference server)"
+
+  vars:
+    user: "{{ local_user.stdout }}"
+
+  pre_tasks:
+    - name: get default (local) user
+      local_action: command whoami
+      register: local_user
+      changed_when: False
+      run_once: yes
+      check_mode: no
+      become: no
+
+    - name: newhash sanity check
+      delegate_to: localhost
+      assert:
+        that:
+          - newhash is match("\$[a-z0-9-]+\$[0-9A-Za-z./+=,$-]+$")
+        msg: "{{ newhash }} doesn't look like /etc/shadow compatible hash"
+      run_once: yes
+      become: no
+
+  tasks:
+    - name: confirm password change
+      pause:
+        prompt: "Press ENTER to set shadow password of user '{{ user }}' to '{{ newhash }}' on {{ play_hosts |length }} servers"
+
+    - name: check target user existence
+      getent:
+        key: "{{ user }}"
+        database: passwd
+
+    - name: change shadow password hash
+      user:
+        user: "{{ user }}"
+        password: "{{ newhash }}"
+      become: yes
